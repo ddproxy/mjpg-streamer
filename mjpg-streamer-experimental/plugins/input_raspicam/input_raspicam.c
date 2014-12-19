@@ -122,31 +122,33 @@ int input_init(input_parameter *param, int plugin_no)
     while(1) {
         int option_index = 0, c = 0;
         static struct option long_options[] = {
-            {"h", no_argument, 0, 0},
-            {"help", no_argument, 0, 0},
-            {"x", required_argument, 0, 0},
-            {"width", required_argument, 0, 0},
-            {"y", required_argument, 0, 0},
-            {"height", required_argument, 0, 0},
-			{"fps", required_argument, 0, 0},
-            {"framerate", required_argument, 0, 0},
-			{"sh", required_argument, 0, 0},
-			{"co", required_argument, 0, 0},
-			{"br", required_argument, 0, 0},
-			{"sa", required_argument, 0, 0},
-			{"ISO", required_argument, 0, 0},
-			{"vs", no_argument, 0, 0},
-			{"ev", required_argument, 0, 0},
-			{"ex", required_argument, 0, 0},
-			{"awb", required_argument, 0, 0},
-			{"ifx", required_argument, 0, 0},
-			{"cfx", required_argument, 0, 0},
-			{"mm", required_argument, 0, 0},
-			{"rot", required_argument, 0, 0},
-			{"hf", no_argument, 0, 0},
-			{"vf", no_argument, 0, 0},
-			{"quality", required_argument, 0, 0},
-			{"usestills", no_argument, 0, 0},
+            {"h", no_argument, 0, 0},                       // 0
+            {"help", no_argument, 0, 0},                    // 1
+            {"x", required_argument, 0, 0},                 // 2
+            {"width", required_argument, 0, 0},             // 3
+            {"y", required_argument, 0, 0},                 // 4
+            {"height", required_argument, 0, 0},            // 5
+            {"fps", required_argument, 0, 0},               // 6
+            {"framerate", required_argument, 0, 0},         // 7
+            {"sh", required_argument, 0, 0},                // 8
+            {"co", required_argument, 0, 0},                // 9
+            {"br", required_argument, 0, 0},                // 10
+            {"sa", required_argument, 0, 0},                // 11
+            {"ISO", required_argument, 0, 0},               // 12
+            {"vs", no_argument, 0, 0},                      // 13
+            {"ev", required_argument, 0, 0},                // 14
+            {"ex", required_argument, 0, 0},                // 15
+            {"awb", required_argument, 0, 0},               // 16
+            {"ifx", required_argument, 0, 0},               // 17
+            {"cfx", required_argument, 0, 0},               // 18
+            {"mm", required_argument, 0, 0},                // 19
+            {"rot", required_argument, 0, 0},               // 20
+            {"hf", no_argument, 0, 0},                      // 21
+            {"vf", no_argument, 0, 0},                      // 22
+            {"quality", required_argument, 0, 0},           // 23
+            {"usestills", no_argument, 0, 0},               // 24
+            {"stats", no_argument, 0, 0},                   // 25
+            {"drc", required_argument, 0, 0},               // 26
             {0, 0, 0, 0}
         };
 		
@@ -255,6 +257,14 @@ int input_init(input_parameter *param, int plugin_no)
 		case 24:
 			//use stills
 			usestills = 1;
+			break;
+		case 25:
+			// use stats
+                        c_params.stats_pass = MMAL_TRUE;
+			break;
+		case 26:
+			// Dynamic Range Compensation DRC
+			c_params.drc_level = drc_mode_from_string(optarg);
 			break;
         default:
             DBG("default case\n");
@@ -481,29 +491,31 @@ void help(void)
     " Help for input plugin..: "INPUT_PLUGIN_NAME"\n" \
     " ---------------------------------------------------------------\n" \
     " The following parameters can be passed to this plugin:\n\n" \
-	" [-fps | --framerate]...: set video framerate, default 1 frame/sec \n"\
+    " [-fps | --framerate]...: set video framerate, default 1 frame/sec \n"\
     " [-x | --width ]........: width of frame capture, default 640\n" \
     " [-y | --height]....: height of frame capture, default 480 \n"\
-	" [-y | --height]....: height of frame capture, default 480 \n"\
-	" [-quality]....: set JPEG quality 0-100, default 85 \n"\
-	" [-usestills]....: uses stills mode instead of video mode \n"\
+    " [-y | --height]....: height of frame capture, default 480 \n"\
+    " [-quality]....: set JPEG quality 0-100, default 85 \n"\
+    " [-usestills]....: uses stills mode instead of video mode \n"\
 	
-	" \n"\
-	" -sh : Set image sharpness (-100 to 100)\n"\
-	" -co : Set image contrast (-100 to 100)\n"\
-	" -br : Set image brightness (0 to 100)\n"\
-	" -sa : Set image saturation (-100 to 100)\n"\
-	" -ISO : Set capture ISO\n"\
-	" -vs : Turn on video stablisation\n"\
-	" -ev : Set EV compensation\n"\
-	" -ex : Set exposure mode (see raspistill notes)\n"\
-	" -awb : Set AWB mode (see raspistill notes)\n"\
-	" -ifx : Set image effect (see raspistill notes)\n"\
-	" -cfx : Set colour effect (U:V)\n"\
-	" -mm : Set metering mode (see raspistill notes)\n"\
-	" -rot : Set image rotation (0-359)\n"\
-	" -hf : Set horizontal flip\n"\
-	" -vf : Set vertical flip\n"\
+    " \n"\
+    " -sh : Set image sharpness (-100 to 100)\n"\
+    " -co : Set image contrast (-100 to 100)\n"\
+    " -br : Set image brightness (0 to 100)\n"\
+    " -sa : Set image saturation (-100 to 100)\n"\
+    " -ISO : Set capture ISO\n"\
+    " -vs : Turn on video stablisation\n"\
+    " -ev : Set EV compensation\n"\
+    " -ex : Set exposure mode (see raspistill notes)\n"\
+    " -awb : Set AWB mode (see raspistill notes)\n"\
+    " -ifx : Set image effect (see raspistill notes)\n"\
+    " -cfx : Set colour effect (U:V)\n"\
+    " -mm : Set metering mode (see raspistill notes)\n"\
+    " -rot : Set image rotation (0-359)\n"\
+    " -stats : Compute image stats for each picture (reduces noise)\n"\
+    " -drc : Dynamic range compensation level (see raspistill notes)\n"\
+    " -hf : Set horizontal flip\n"\
+    " -vf : Set vertical flip\n"\
     " ---------------------------------------------------------------\n");
 	
 }
