@@ -529,7 +529,7 @@ static MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *s
  */
 static MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, drc_mode_map, drc_mode_map_size);
+   int i = map_xref(str, drc_mode_map, drc_mode_map_size);
 
    if( i != -1)
       return (MMAL_PARAMETER_DRC_STRENGTH_T)i;
