@@ -1,0 +1,21 @@
+gcc -D'SVN_REV="Nicht versioniertes Verzeichnis"' -DLINUX -D_GNU_SOURCE -Wall  -g -Wuninitialized   -c -o mjpg_streamer.o mjpg_streamer.c
+mjpg_streamer.c: In function ‘signal_handler’:
+mjpg_streamer.c:95:12: warning: unused variable ‘j’ [-Wunused-variable]
+     int i, j;
+            ^
+gcc -D'SVN_REV="Nicht versioniertes Verzeichnis"' -DLINUX -D_GNU_SOURCE -Wall  -g -Wuninitialized   -c -o utils.o utils.c
+gcc -D'SVN_REV="Nicht versioniertes Verzeichnis"' -DLINUX -D_GNU_SOURCE -Wall  -g -Wuninitialized mjpg_streamer.o utils.o -lpthread -ldl -o mjpg_streamer
+chmod 755 mjpg_streamer
+make -C plugins/input_uvc all
+make[1]: Entering directory '/home/mb/workspace/mjpg-streamer/mjpg-streamer-experimental/plugins/input_uvc'
+gcc -c -O1  -DLINUX -D_GNU_SOURCE -Wall -shared -fPIC -o v4l2uvc.lo v4l2uvc.c
+gcc -c -O1  -DLINUX -D_GNU_SOURCE -Wall -shared -fPIC -o jpeg_utils.lo jpeg_utils.c
+jpeg_utils.c:27:21: fatal error: jpeglib.h: Datei oder Verzeichnis nicht gefunden
+ #include <jpeglib.h>
+                     ^
+compilation terminated.
+Makefile:41: recipe for target 'jpeg_utils.lo' failed
+make[1]: *** [jpeg_utils.lo] Error 1
+make[1]: Leaving directory '/home/mb/workspace/mjpg-streamer/mjpg-streamer-experimental/plugins/input_uvc'
+Makefile:82: recipe for target 'input_uvc.so' failed
+make: *** [input_uvc.so] Error 2
