@@ -171,109 +171,170 @@ int input_init(input_parameter *param, int plugin_no)
       return 1;
     }
 
-    switch(option_index) {
-      /* h, help */
-      case 0:
-      case 1:
-        DBG("case 0,1\n");
-        help();
-        return 1;
-        break;
-        /* width */
-      case 2:
-      case 3:
-        DBG("case 2,3\n");
-        width = atoi(optarg);
-        break;
-        /* height */
-      case 4:
-      case 5:
-        DBG("case 4,5\n");
-        height = atoi(optarg);
-        break;
-        /* fps */
-      case 6:
-      case 7:
-        DBG("case 6, 7\n");
-        fps = atoi(optarg);
-        break;
-      case 8:
-        //sharpness
-        sscanf(optarg, "%d", &c_params.sharpness);
-        break;
-      case 9:
-        //contrast
-        sscanf(optarg, "%d", &c_params.contrast);
-        break;
-      case 10:
-        //brightness
-        sscanf(optarg, "%d", &c_params.brightness);
-        break;
-      case 11:
-        //saturation
-        sscanf(optarg, "%d", &c_params.saturation);
-        break;
-      case 12:
-        //ISO
-        sscanf(optarg, "%d", &c_params.ISO);
-        break;
-      case 13:
-        //video stabilisation
-        c_params.videoStabilisation = 1;
-        break;
-      case 14:
-        //ev
-        sscanf(optarg, "%d", &c_params.exposureCompensation);
-        break;
-      case 15:
-        //exposure
-        c_params.exposureMode = exposure_mode_from_string(optarg);
-        break;
-      case 16:
-        //awb mode
-        c_params.awbMode = awb_mode_from_string(optarg);
-        break;
-      case 17:
-        //img effect
-        c_params.imageEffect = imagefx_mode_from_string(optarg);
-        break;
-      case 18:
-        //color effects
-        sscanf(optarg, "%d:%d", &c_params.colourEffects.u, &c_params.colourEffects.u);
-        c_params.colourEffects.enable = 1;
-        break;
-      case 19:
-        //metering mode
-        c_params.exposureMeterMode = metering_mode_from_string(optarg);
-        break;
-      case 20:
-        //rotation
-        sscanf(optarg, "%d", &c_params.rotation);
-        break;
-      case 21:
-        //hflip
-        c_params.hflip  = 1;
-        break;
-      case 22:
-        //vflip
-        c_params.vflip = 1;
-        break;
-      case 23:
-        //quality
-        quality = atoi(optarg);
-        break;
-      case 24:
-        //use stills
-        usestills = 1;
-        break;
-      case 25:
-        //display preview
-        wantPreview = 1;
-        break;
-      default:
-        DBG("default case\n");
-        help();
-        return 1;
+    param->argv[0] = INPUT_PLUGIN_NAME;
+    plugin_number = plugin_no;
+
+	//setup the camera control st
+	raspicamcontrol_set_defaults(&c_params);
+
+    /* show all parameters for DBG purposes */
+    for(i = 0; i < param->argc; i++) {
+        DBG("argv[%d]=%s\n", i, param->argv[i]);
+    }
+
+    reset_getopt();
+    while(1) {
+        int option_index = 0, c = 0;
+        static struct option long_options[] = {
+            {"h", no_argument, 0, 0},                       // 0
+            {"help", no_argument, 0, 0},                    // 1
+            {"x", required_argument, 0, 0},                 // 2
+            {"width", required_argument, 0, 0},             // 3
+            {"y", required_argument, 0, 0},                 // 4
+            {"height", required_argument, 0, 0},            // 5
+            {"fps", required_argument, 0, 0},               // 6
+            {"framerate", required_argument, 0, 0},         // 7
+            {"sh", required_argument, 0, 0},                // 8
+            {"co", required_argument, 0, 0},                // 9
+            {"br", required_argument, 0, 0},                // 10
+            {"sa", required_argument, 0, 0},                // 11
+            {"ISO", required_argument, 0, 0},               // 12
+            {"vs", no_argument, 0, 0},                      // 13
+            {"ev", required_argument, 0, 0},                // 14
+            {"ex", required_argument, 0, 0},                // 15
+            {"awb", required_argument, 0, 0},               // 16
+            {"ifx", required_argument, 0, 0},               // 17
+            {"cfx", required_argument, 0, 0},               // 18
+            {"mm", required_argument, 0, 0},                // 19
+            {"rot", required_argument, 0, 0},               // 20
+            {"hf", no_argument, 0, 0},                      // 21
+            {"vf", no_argument, 0, 0},                      // 22
+            {"quality", required_argument, 0, 0},           // 23
+            {"usestills", no_argument, 0, 0},               // 24
+            {"stats", no_argument, 0, 0},                   // 25
+            {"drc", required_argument, 0, 0},               // 26
+            {0, 0, 0, 0}
+        };
+
+        c = getopt_long_only(param->argc, param->argv, "", long_options, &option_index);
+
+        /* no more options to parse */
+        if(c == -1) break;
+
+        /* unrecognized option */
+        if(c == '?') {
+            help();
+            return 1;
+        }
+
+        switch(option_index) {
+            /* h, help */
+        case 0:
+        case 1:
+            DBG("case 0,1\n");
+            help();
+            return 1;
+            break;
+            /* width */
+        case 2:
+        case 3:
+            DBG("case 2,3\n");
+            width = atoi(optarg);
+            break;
+            /* height */
+        case 4:
+        case 5:
+            DBG("case 4,5\n");
+            height = atoi(optarg);
+            break;
+			/* fps */
+		case 6:
+		case 7:
+			DBG("case 6, 7\n");
+			fps = atoi(optarg);
+			break;
+		case 8:
+			//sharpness
+			sscanf(optarg, "%d", &c_params.sharpness);
+			break;
+		case 9:
+			//contrast
+			sscanf(optarg, "%d", &c_params.contrast);
+			break;
+		case 10:
+			//brightness
+			sscanf(optarg, "%d", &c_params.brightness);
+			break;
+		case 11:
+			//saturation
+			sscanf(optarg, "%d", &c_params.saturation);
+			break;
+		case 12:
+			//ISO
+			sscanf(optarg, "%d", &c_params.ISO);
+			break;
+		case 13:
+			//video stabilisation
+			c_params.videoStabilisation = 1;
+			break;
+		case 14:
+			//ev
+			sscanf(optarg, "%d", &c_params.exposureCompensation);
+			break;
+		case 15:
+			//exposure
+			c_params.exposureMode = exposure_mode_from_string(optarg);
+			break;
+		case 16:
+			//awb mode
+			c_params.awbMode = awb_mode_from_string(optarg);
+			break;
+		case 17:
+			//img effect
+			c_params.imageEffect = imagefx_mode_from_string(optarg);
+			break;
+		case 18:
+			//color effects
+			sscanf(optarg, "%d:%d", &c_params.colourEffects.u, &c_params.colourEffects.u);
+			c_params.colourEffects.enable = 1;
+			break;
+		case 19:
+			//metering mode
+			c_params.exposureMeterMode = metering_mode_from_string(optarg);
+			break;
+		case 20:
+			//rotation
+			sscanf(optarg, "%d", &c_params.rotation);
+			break;
+		case 21:
+			//hflip
+			c_params.hflip  = 1;
+			break;
+		case 22:
+			//vflip
+			c_params.vflip = 1;
+			break;
+		case 23:
+			//quality
+			quality = atoi(optarg);
+			break;
+		case 24:
+			//use stills
+			usestills = 1;
+			break;
+		case 25:
+			// use stats
+                        c_params.stats_pass = MMAL_TRUE;
+			break;
+		case 26:
+			// Dynamic Range Compensation DRC
+			c_params.drc_level = drc_mode_from_string(optarg);
+			break;
+        default:
+            DBG("default case\n");
+            help();
+            return 1;
+        }
     }
   }
 
@@ -366,7 +427,7 @@ static void encoder_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buf
       pData->offset = 0;
       /* signal fresh_frame */
       pthread_cond_broadcast(&pglobal->in[plugin_number].db_update);
-      pthread_mutex_unlock(&pglobal->in[plugin_number].db); 
+      pthread_mutex_unlock(&pglobal->in[plugin_number].db);
     }
   }
   else
@@ -492,34 +553,36 @@ static MMAL_STATUS_T connect_ports(MMAL_PORT_T *output_port, MMAL_PORT_T *input_
  ******************************************************************************/
 void help(void)
 {
-  fprintf(stderr, " ---------------------------------------------------------------\n" \
-      " Help for input plugin..: "INPUT_PLUGIN_NAME"\n" \
-      " ---------------------------------------------------------------\n" \
-      " The following parameters can be passed to this plugin:\n\n" \
-      " [-fps | --framerate]...: set video framerate, default 5 frame/sec \n"\
-      " [-x | --width ]........: width of frame capture, default 640\n" \
-      " [-y | --height]........: height of frame capture, default 480 \n"\
-      " [-quality].............: set JPEG quality 0-100, default 85 \n"\
-      " [-usestills]...........: uses stills mode instead of video mode \n"\
-      " [-preview].............: Enable full screen preview\n"\
+    fprintf(stderr, " ---------------------------------------------------------------\n" \
+    " Help for input plugin..: "INPUT_PLUGIN_NAME"\n" \
+    " ---------------------------------------------------------------\n" \
+    " The following parameters can be passed to this plugin:\n\n" \
+    " [-fps | --framerate]...: set video framerate, default 1 frame/sec \n"\
+    " [-x | --width ]........: width of frame capture, default 640\n" \
+    " [-y | --height]....: height of frame capture, default 480 \n"\
+    " [-y | --height]....: height of frame capture, default 480 \n"\
+    " [-quality]....: set JPEG quality 0-100, default 85 \n"\
+    " [-usestills]....: uses stills mode instead of video mode \n"\
 
-      " \n"\
-      " -sh  : Set image sharpness (-100 to 100)\n"\
-      " -co  : Set image contrast (-100 to 100)\n"\
-      " -br  : Set image brightness (0 to 100)\n"\
-      " -sa  : Set image saturation (-100 to 100)\n"\
-      " -ISO : Set capture ISO\n"\
-      " -vs  : Turn on video stablisation\n"\
-      " -ev  : Set EV compensation\n"\
-      " -ex  : Set exposure mode (see raspistill notes)\n"\
-      " -awb : Set AWB mode (see raspistill notes)\n"\
-      " -ifx : Set image effect (see raspistill notes)\n"\
-      " -cfx : Set colour effect (U:V)\n"\
-      " -mm  : Set metering mode (see raspistill notes)\n"\
-      " -rot : Set image rotation (0-359)\n"\
-      " -hf  : Set horizontal flip\n"\
-      " -vf  : Set vertical flip\n"\
-      " ---------------------------------------------------------------\n");
+    " \n"\
+    " -sh : Set image sharpness (-100 to 100)\n"\
+    " -co : Set image contrast (-100 to 100)\n"\
+    " -br : Set image brightness (0 to 100)\n"\
+    " -sa : Set image saturation (-100 to 100)\n"\
+    " -ISO : Set capture ISO\n"\
+    " -vs : Turn on video stablisation\n"\
+    " -ev : Set EV compensation\n"\
+    " -ex : Set exposure mode (see raspistill notes)\n"\
+    " -awb : Set AWB mode (see raspistill notes)\n"\
+    " -ifx : Set image effect (see raspistill notes)\n"\
+    " -cfx : Set colour effect (U:V)\n"\
+    " -mm : Set metering mode (see raspistill notes)\n"\
+    " -rot : Set image rotation (0-359)\n"\
+    " -stats : Compute image stats for each picture (reduces noise)\n"\
+    " -drc : Dynamic range compensation level (see raspistill notes)\n"\
+    " -hf : Set horizontal flip\n"\
+    " -vf : Set vertical flip\n"\
+    " ---------------------------------------------------------------\n");
 
 }
 
@@ -938,7 +1001,7 @@ void *worker_thread(void *arg)
       frames++;
       if (frames == 100)
       {
-        //calculate fps      
+        //calculate fps
         clock_gettime(CLOCK_MONOTONIC, &t_finish);
         t_elapsed = (t_finish.tv_sec - t_start.tv_sec);
         t_elapsed += (t_finish.tv_nsec - t_start.tv_nsec) / 1000000000.0;
@@ -948,7 +1011,7 @@ void *worker_thread(void *arg)
       }
     }
 
-  } 
+  }
   else
   { //if(usestills)
     //Video Mode
