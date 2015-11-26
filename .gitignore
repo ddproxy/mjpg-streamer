@@ -10,3 +10,7 @@
 *.lai
 *.la
 *.a
+
+# cmake stuff
+mjpg-streamer-experimental/plugins/input_raspicam/build/*
+mjpg-streamer-experimental/mjpg_streamer
