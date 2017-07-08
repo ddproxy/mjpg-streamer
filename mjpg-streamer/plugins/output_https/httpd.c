@@ -92,16 +92,17 @@ Description.: read with timeout, implemented without using signals
               tries to read len bytes and returns if enough bytes were read
               or the timeout was triggered. In case of timeout the return
               value may differ from the requested bytes "len".
-Input Value.: * fd.....: fildescriptor to read from
-              * iobuf..: iobuffer that allows to use this functions from multiple
-                         threads because the complete context is the iobuffer.
-              * buffer.: The buffer to store values at, will be set to zero
-                         before storing values.
-              * len....: the length of buffer
-              * timeout: seconds to wait for an answer
-Return Value: * buffer.: will become filled with bytes read
-              * iobuf..: May get altered to save the context for future calls.
-              * func().: bytes copied to buffer or -1 in case of error
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor to read from
+              * iobuf...: iobuffer that allows to use this functions from multiple
+                          threads because the complete context is the iobuffer.
+              * buffer..: The buffer to store values at, will be set to zero
+                          before storing values.
+              * len.....: the length of buffer
+              * timeout.: seconds to wait for an answer
+Return Value: * buffer..: will become filled with bytes read
+              * iobuf...: May get altered to save the context for future calls.
+              * func()..: bytes copied to buffer or -1 in case of error
 ******************************************************************************/
 int _read(SSL* ssl_sock, int fd, iobuffer *iobuf, void *buffer, size_t len, int timeout)
 {
@@ -135,12 +136,11 @@ int _read(SSL* ssl_sock, int fd, iobuffer *iobuf, void *buffer, size_t len, int 
         FD_ZERO(&fde);
         FD_SET(fd, &fde);
         
-        DBG("Mi blocco sulla select\n");
         
         if((rc = select(fd + 1, &fds, &fdw, &fde, &tv)) <= 0) {
             if(rc < 0)
                 exit(EXIT_FAILURE);
-	    DBG("copied = %i\n", copied);
+
 	    
             /* this must be a timeout */
             return copied;
@@ -172,16 +172,17 @@ Description.: Read a single line from the provided fildescriptor.
               This funtion will return under two conditions:
               * line end was reached
               * timeout occured
-Input Value.: * fd.....: fildescriptor to read from
-              * iobuf..: iobuffer that allows to use this functions from multiple
-                         threads because the complete context is the iobuffer.
-              * buffer.: The buffer to store values at, will be set to zero
-                         before storing values.
-              * len....: the length of buffer
-              * timeout: seconds to wait for an answer
-Return Value: * buffer.: will become filled with bytes read
-              * iobuf..: May get altered to save the context for future calls.
-              * func().: bytes copied to buffer or -1 in case of error
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor to read from
+              * iobuf...: iobuffer that allows to use this functions from multiple
+                          threads because the complete context is the iobuffer.
+              * buffer..: The buffer to store values at, will be set to zero
+                          before storing values.
+              * len.....: the length of buffer
+              * timeout.: seconds to wait for an answer
+Return Value: * buffer..: will become filled with bytes read
+              * iobuf...: May get altered to save the context for future calls.
+              * func()..: bytes copied to buffer or -1 in case of error
 ******************************************************************************/
 /* read just a single line or timeout */
 int _readline(SSL* ssl_sock, int fd, iobuffer *iobuf, void *buffer, size_t len, int timeout)
@@ -313,7 +314,8 @@ int unescape(char *string)
 
 /******************************************************************************
 Description.: Send a complete HTTP response and a single JPG-frame.
-Input Value.: fildescriptor fd to send the answer to
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor fd to send the answer to
 Return Value: -
 ******************************************************************************/
 void send_snapshot(SSL* ssl_sock, int fd, int input_number)
@@ -364,7 +366,8 @@ void send_snapshot(SSL* ssl_sock, int fd, int input_number)
 
 /******************************************************************************
 Description.: Send a complete HTTP response and a stream of JPG-frames.
-Input Value.: fildescriptor fd to send the answer to
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor fd to send the answer to
 Return Value: -
 ******************************************************************************/
 void send_stream(SSL* ssl_sock, int fd, int input_number)
@@ -445,9 +448,10 @@ void send_stream(SSL* ssl_sock, int fd, int input_number)
 
 /******************************************************************************
 Description.: Send error messages and headers.
-Input Value.: * fd.....: is the filedescriptor to send the message to
-              * which..: HTTP error code, most popular is 404
-              * message: append this string to the displayed response
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: is the filedescriptor to send the message to
+              * which...: HTTP error code, most popular is 404
+              * message.: append this string to the displayed response
 Return Value: -
 ******************************************************************************/
 void send_error(SSL* ssl_sock, int fd, int which, char *message)
@@ -502,7 +506,8 @@ Description.: Send HTTP header and copy the content of a file. To keep things
               simple, just a single folder gets searched for the file. Just
               files with known extension and supported mimetype get served.
               If no parameter was given, the file "index.html" will be copied.
-Input Value.: * fd.......: filedescriptor to send data to
+Input Value.: * ssl_sock.: ssl network socket 
+              * fd.......: filedescriptor to send data to
               * parameter: string that consists of the filename
               * id.......: specifies which server-context is the right one
 Return Value: -
@@ -585,7 +590,8 @@ void send_file(SSL* ssl_sock, int id, int fd, char *parameter)
 
 /******************************************************************************
 Description.: Perform a command specified by parameter. Send response to fd.
-Input Value.: * fd.......: filedescriptor to send HTTP response to.
+Input Value.: * ssl_sock.: ssl network socket 
+              * fd.......: filedescriptor to send HTTP response to.
               * parameter: contains the command and value as string.
               * id.......: specifies which server-context to choose.
 Return Value: -
@@ -770,7 +776,7 @@ void *client_thread(void *arg)
     iobuffer iobuf;
     request req;
     cfd lcfd; /* local-connected-file-descriptor */
-    SSL* ssl_sock; 
+    SSL* ssl_sock; /* SSL socket pointer */
 
     /* we really need the fildescriptor and it must be freeable by us */
     if(arg != NULL) {
@@ -783,7 +789,7 @@ void *client_thread(void *arg)
     init_iobuffer(&iobuf);
     init_request(&req);
 
-    /* before any read create the ssl socket from normal socket */
+    /* create the SSL socket by binding the normal socket to SSL context*/
     ssl_sock = bind_socket_to_SSL(lcfd.ssl_ctx, lcfd.fd);
     if(ssl_sock == NULL){
     	close(lcfd.fd);
@@ -793,6 +799,7 @@ void *client_thread(void *arg)
     /* What does the client want to receive? Read the request. */
     memset(buffer, 0, sizeof(buffer));
     if((cnt = _readline(ssl_sock, lcfd.fd, &iobuf, buffer, sizeof(buffer) - 1, 5)) == -1) {
+    	/* close the SSL protocol and free its data structure */
     	SSL_shutdown(ssl_sock);
     	SSL_free(ssl_sock);
         close(lcfd.fd);
@@ -832,6 +839,7 @@ void *client_thread(void *arg)
         if((pb = strstr(buffer, "GET /?action=command")) == NULL) {
             DBG("HTTP request seems to be malformed\n");
             send_error(ssl_sock, lcfd.fd, 400, "Malformed HTTP request");
+            /* close the SSL protocol and free its data structure */
             SSL_shutdown(ssl_sock);
     	    SSL_free(ssl_sock);
             close(lcfd.fd);
@@ -853,6 +861,7 @@ void *client_thread(void *arg)
             free(req.parameter);
             send_error(ssl_sock, lcfd.fd, 500, "could not properly unescape command parameter string");
             LOG("could not properly unescape command parameter string\n");
+            /* close the SSL protocol and free its data structure */
             SSL_shutdown(ssl_sock);
     	    SSL_free(ssl_sock);
             close(lcfd.fd);
@@ -869,6 +878,7 @@ void *client_thread(void *arg)
         if((pb = strstr(buffer, "GET /")) == NULL) {
             DBG("HTTP request seems to be malformed\n");
             send_error(ssl_sock, lcfd.fd, 400, "Malformed HTTP request");
+            /* close the SSL protocol and free its data structure */
             SSL_shutdown(ssl_sock);
     	    SSL_free(ssl_sock);
             close(lcfd.fd);
@@ -914,6 +924,7 @@ void *client_thread(void *arg)
 
         if((cnt = _readline(ssl_sock, lcfd.fd, &iobuf, buffer, sizeof(buffer) - 1, 5)) == -1) {
             free_request(&req);
+            /* close the SSL protocol and free its data structure */
             SSL_shutdown(ssl_sock);
             SSL_free(ssl_sock);
             close(lcfd.fd);
@@ -936,6 +947,7 @@ void *client_thread(void *arg)
         if(req.credentials == NULL || strcmp(lcfd.pc->conf.credentials, req.credentials) != 0) {
             DBG("access denied\n");
             send_error(ssl_sock, lcfd.fd, 401, "username and password do not match to configuration");
+            /* close the SSL protocol and free its data structure */
             SSL_shutdown(ssl_sock);
     	    SSL_free(ssl_sock);
             close(lcfd.fd);
@@ -992,7 +1004,7 @@ void *client_thread(void *arg)
     default:
         DBG("unknown request\n");
     }
-	
+    /* close the SSL protocol and free its data structure */
     SSL_shutdown(ssl_sock);
     SSL_free(ssl_sock);
     close(lcfd.fd);
@@ -1013,7 +1025,7 @@ void server_cleanup(void *arg)
     int i;
 
     OPRINT("cleaning up ressources allocated by server thread #%02d\n", pcontext->id);
-    
+    /* free every data structure needed by the SSL factory */
     ssl_context_cleanup(pcontext->ssl_ctx);
     
     for(i = 0; i < MAX_SD_LEN; i++)
@@ -1043,12 +1055,12 @@ void *server_thread(void *arg)
     char name[NI_MAXHOST];
     int err;
     int i;
-    /*SSL factory pointer, used for every new client connection*/
+    /* SSL factory pointer, used for every new client connection */
     SSL_CTX* ssl_ctx = NULL;
     
     context *pcontext = arg;
     pglobal = pcontext->pglobal;
-    
+    /* check if the user has inserted the file path for public certificate and private key */
     if(pcontext->conf.certficate_path == NULL || pcontext->conf.private_key_path == NULL){
     	perror("public certificate and private key files must be specified");
     	exit(EXIT_FAILURE);
@@ -1061,7 +1073,7 @@ void *server_thread(void *arg)
     	perror("create_SSL_context(cert_file, prvkey_file) failed");
     	exit(EXIT_FAILURE);
     }
-    
+    /* store the SSL factory pointer in the server context*/
     pcontext->ssl_ctx = ssl_ctx;
 
     /* set cleanup handler to cleanup ressources */
@@ -1170,7 +1182,7 @@ void *server_thread(void *arg)
             if(pcontext->sd[i] != -1 && FD_ISSET(pcontext->sd[i], &selectfds)) {
                 pcfd->fd = accept(pcontext->sd[i], (struct sockaddr *)&client_addr, &addr_len);
                 pcfd->pc = pcontext;
-                /*pass the ssl factory to the thread*/
+                /* pass the ssl factory to the thread */
                 pcfd->ssl_ctx = ssl_ctx;
 
                 /* start new thread that will handle this TCP connected client */
@@ -1204,7 +1216,8 @@ void *server_thread(void *arg)
 /******************************************************************************
 Description.: Send a JSON file which is contains information about the input plugin's
               acceptable parameters
-Input Value.: fildescriptor fd to send the answer to
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor fd to send the answer to
 Return Value: -
 ******************************************************************************/
 void send_Input_JSON(SSL* ssl_sock, int fd, int plugin_number)
@@ -1383,7 +1396,8 @@ void send_Program_JSON(SSL* ssl_sock, int fd)
 /******************************************************************************
 Description.: Send a JSON file which is contains information about the output plugin's
               acceptable parameters
-Input Value.: fildescriptor fd to send the answer to
+Input Value.: * ssl_sock: ssl network socket 
+              * fd......: fildescriptor fd to send the answer to
 Return Value: -
 ******************************************************************************/
 void send_Output_JSON(SSL* ssl_sock, int fd, int plugin_number)
