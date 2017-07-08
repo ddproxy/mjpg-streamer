@@ -1,10 +1,10 @@
 #include "security.h"
 #include "../../mjpg_streamer.h"
 
-//array dei thread lock disponibili alla libreria openssl
+/* Array of thread lock needed by OpenSSL library to handle SSL connections */
 static MUTEX_TYPE *mutex_buf = NULL;
 
-//funzione che gestisce il lock per le strutture della libreria OpenSSL (è una funzione callback, settata alla creazione del contesto ssl)
+/* Callback function that handles the lock procedure. Required (and called) by OpenSSL library */
 static void locking_function(int mode, int n, const char * file, int line)
 {
     if (mode & CRYPTO_LOCK){
@@ -15,13 +15,13 @@ static void locking_function(int mode, int n, const char * file, int line)
     }
 }
 
-//funzione di callback che restuisce l'id del thread
+/* Callback function that returns the thread's ID */
 static unsigned long id_function(void)
 {
     return ((unsigned long)THREAD_ID);
 }
 
-//If password is needed to load the private key of the server, it asks to the user
+/* Callback function that possibly asks the user to prompt the private key file's password, so as to decrypt and load it into the context */
 int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata){
  	int ret;
  	char format_string[10];				//10 chars are enough to store the format string
@@ -36,8 +36,13 @@ int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata){
  }
  
 
-//funzione che crea il contesto, i parametri all'inizio potranno essere pochi ed elementari, più avanti si darà la possibilità
-//di creare una sessione ssl passandogli i certificati da usare, password, etc etc
+/******************************************************************************
+Description.: Create the SSL context, from which will be possible to 
+	      instantiate SSL sockets.
+Input Value.: * cert_file..: path of the public certificate file
+              * prvkey_file: path of the private key file
+Return Value: pointer to data structure representing the SSL context
+******************************************************************************/
 SSL_CTX* create_SSL_context(const char* cert_file, const char* prvkey_file){
 	SSL_CTX* ctx;
 	int error;
@@ -53,8 +58,8 @@ SSL_CTX* create_SSL_context(const char* cert_file, const char* prvkey_file){
         	fprintf(stderr, "Can't initialize SSL_CTX\n");
         	return NULL;
     	}
-    	//abilito write parziali (cioè scrivono meno byte di quelli specificati) e il release dei buffer nelle connessioni ssl idle, per risparmiare ram
-    	SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS); 	//SSL_MODE_ENABLE_PARTIAL_WRITE rimosso per ora
+    	
+    	SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS); 	
     	
     	SSL_CTX_set_cipher_list(ctx, SSL_CIPHERS);
     	
@@ -97,7 +102,15 @@ SSL_CTX* create_SSL_context(const char* cert_file, const char* prvkey_file){
     	
     	return ctx;
 }
-//funzione che associa un socket al SSL_socket
+
+
+/******************************************************************************
+Description.: Bind a traditional TCP socket to the SSL context. As a result 
+	      this function creates the so-called SSL socket.
+Input Value.: * ctx.: pointer to the SSL context 
+              * sock: system socket (file descriptor)
+Return Value: pointer to data structure representing the SSL socket
+******************************************************************************/
 SSL* bind_socket_to_SSL(SSL_CTX* ctx, int sock){
 	SSL* ssl_sock;
 	int error;
@@ -125,7 +138,16 @@ SSL* bind_socket_to_SSL(SSL_CTX* ctx, int sock){
 	}
 	return ssl_sock;
 }
-//funzione di read sulla sessione ssl 
+
+/******************************************************************************
+Description.: Read at most <count> bytes from the SSL socket or, if it 
+	      is NULL, from the TCP socket.  
+Input Value.: * fd....: TCP socket
+	      * buffer: buffer where to store the data
+              * count.: number of bytes to read
+              * sock..: SSL socket
+Return Value: number of bytes read.
+******************************************************************************/
 int secure_read(int fd, void* buffer, int count, SSL* sock){
 	int ret;
 	//printf("secure_read\n");
@@ -138,7 +160,15 @@ int secure_read(int fd, void* buffer, int count, SSL* sock){
 	}
 }
 
-//funzione di write sulla sessione ssl 
+/******************************************************************************
+Description.: Write at most <count> bytes on the SSL socket or, if it 
+	      is NULL, on the TCP socket.  
+Input Value.: * fd....: TCP socket
+	      * buffer: buffer containing data to write
+              * count.: number of bytes to write
+              * sock..: SSL socket
+Return Value: number of bytes written.
+******************************************************************************/
 int secure_write(int fd, void* buffer, int count, SSL* sock){
 	//printf("secure_write\n");
 	if(sock == NULL)
@@ -147,7 +177,12 @@ int secure_write(int fd, void* buffer, int count, SSL* sock){
 		return SSL_write(sock, buffer, count);
 }
 
-//funzione di cleanup del contesto
+/******************************************************************************
+Description.: Clean and free all data structures allocated and used by the 
+	      SSL context. 
+Input Value.: * ctx: SSL context to cleanup
+Return Value: -
+******************************************************************************/
 void ssl_context_cleanup(SSL_CTX* ctx){
 	int i;
 	if(ctx == NULL)
