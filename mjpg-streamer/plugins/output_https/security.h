@@ -4,6 +4,7 @@
 #include <openssl/err.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define MUTEX_TYPE            pthread_mutex_t
 #define MUTEX_SETUP(x)        pthread_mutex_init(&(x), NULL)

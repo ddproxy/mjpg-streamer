@@ -1,4 +1,5 @@
 #include "security.h"
+#include "../../mjpg_streamer.h"
 
 //array dei thread lock disponibili alla libreria openssl
 static MUTEX_TYPE *mutex_buf = NULL;
@@ -21,12 +22,16 @@ static unsigned long id_function(void)
 }
 
 //If password is needed to load the private key of the server, it asks to the user
-int pem_passwd_cb(char *buf, int size, int rwflag, void *password){
+int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata){
  	int ret;
- 	printf("Enter your password for private key: ");
-	ret = scanf("%s", buf);
- 	//**********************************************************************************************vulnerabilità di segmentation fault, input > buffer size
-	buf[size - 1] = '\0';
+ 	char format_string[10];				//10 chars are enough to store the format string
+ 	printf("Enter your password for private key (max length = %i letters): ", size-1);
+ 	//We want to read at most <size-1> letters from the password, in order to prevent the scanf function from causing buffer overflow
+ 	sprintf(format_string ,"%%%is", size-1);			//Here we are building the format string: %<size-1>s
+	ret = scanf(format_string, buf);
+	if(ret != 1){
+		fprintf(stderr, "scanf() failed in reading the password\n");
+	}	
 	return(strlen(buf));
  }
  
@@ -59,7 +64,7 @@ SSL_CTX* create_SSL_context(const char* cert_file, const char* prvkey_file){
         	return NULL;
     	}
     	
-    	printf("OPENSSL: Server certificate file loaded\n");
+    	DBG("OPENSSL: Server certificate file loaded\n");
     	
     	SSL_CTX_set_default_passwd_cb(ctx,pem_passwd_cb);
     	
@@ -69,8 +74,8 @@ SSL_CTX* create_SSL_context(const char* cert_file, const char* prvkey_file){
         	return NULL;
     	}
     	
-    	printf("OPENSSL: Server private key file loaded\n");
-    	
+    	DBG("OPENSSL: Server private key file loaded\n");
+    	printf("OPENSSL: private key and public certificate loaded\n");
     	error = SSL_CTX_check_private_key(ctx);
     	if(error != 1){
     		fprintf(stderr, "Private key does not match the public certificate.\n");
@@ -145,6 +150,8 @@ int secure_write(int fd, void* buffer, int count, SSL* sock){
 //funzione di cleanup del contesto
 void ssl_context_cleanup(SSL_CTX* ctx){
 	int i;
+	if(ctx == NULL)
+		return;
 	SSL_CTX_free(ctx);
 	CRYPTO_set_id_callback(NULL);
     	CRYPTO_set_locking_callback(NULL);
