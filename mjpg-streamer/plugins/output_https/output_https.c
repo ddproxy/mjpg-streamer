@@ -61,6 +61,8 @@ void help(void)
             "                           flat hierarchy (no subfolders)\n" \
             " [-p | --port ]..........: TCP port for this HTTP server\n" \
             " [-c | --credentials ]...: ask for \"username:password\" on connect\n" \
+            " [-k | --key ]...........: path to the file containing the private key\n" \
+            " [-s | --servercert ]....: path to the file containing the public certificate\n" \
             " [-n | --nocommands ]....: disable execution of commands\n"
             " ---------------------------------------------------------------\n");
 }
@@ -79,7 +81,7 @@ int output_init(output_parameter *param, int id)
 {
     int i;
     int  port;
-    char *credentials, *www_folder;
+    char *credentials, *www_folder, *private_key_path, *certificate_path;
     char nocommands;
 
     DBG("output #%02d\n", param->id);
@@ -87,6 +89,8 @@ int output_init(output_parameter *param, int id)
     port = htons(8080);
     credentials = NULL;
     www_folder = NULL;
+    private_key_path = NULL;
+    certificate_path = NULL;
     nocommands = 0;
 
     param->argv[0] = OUTPUT_PLUGIN_NAME;
@@ -109,6 +113,10 @@ int output_init(output_parameter *param, int id)
             {"credentials", required_argument, 0, 0},
             {"w", required_argument, 0, 0},
             {"www", required_argument, 0, 0},
+            {"k", required_argument, 0, 0},
+            {"key", required_argument, 0, 0},
+            {"s", required_argument, 0, 0},
+            {"servercert", required_argument, 0, 0},
             {"n", no_argument, 0, 0},
             {"nocommands", no_argument, 0, 0},
             {0, 0, 0, 0}
@@ -157,11 +165,24 @@ int output_init(output_parameter *param, int id)
             if(optarg[strlen(optarg)-1] != '/')
                 strcat(www_folder, "/");
             break;
-
-            /* n, nocommands */
+            /* k, key */
         case 8:
         case 9:
             DBG("case 8,9\n");
+            private_key_path = malloc(strlen(optarg) + 1);
+            strcpy(private_key_path, optarg);
+            break;
+	    /* s, servercert */
+	case 10:
+        case 11:
+            DBG("case 10,11\n");
+            certificate_path = malloc(strlen(optarg) + 1);
+            strcpy(certificate_path, optarg);
+            break;
+            /* n, nocommands */
+        case 12:
+        case 13:
+            DBG("case 12,13\n");
             nocommands = 1;
             break;
         }
@@ -172,11 +193,15 @@ int output_init(output_parameter *param, int id)
     servers[param->id].conf.port = port;
     servers[param->id].conf.credentials = credentials;
     servers[param->id].conf.www_folder = www_folder;
+    servers[param->id].conf.certficate_path = certificate_path;
+    servers[param->id].conf.private_key_path = private_key_path;
     servers[param->id].conf.nocommands = nocommands;
 
     OPRINT("www-folder-path...: %s\n", (www_folder == NULL) ? "disabled" : www_folder);
     OPRINT("HTTP TCP port.....: %d\n", ntohs(port));
     OPRINT("username:password.: %s\n", (credentials == NULL) ? "disabled" : credentials);
+    OPRINT("private key path..: %s\n", (private_key_path == NULL) ? "disabled" : private_key_path);
+    OPRINT("public certificate: %s\n", (certificate_path == NULL) ? "disabled" : certificate_path);
     OPRINT("commands..........: %s\n", (nocommands) ? "disabled" : "enabled");
     return 0;
 }
