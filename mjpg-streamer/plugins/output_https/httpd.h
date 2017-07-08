@@ -122,6 +122,8 @@ typedef struct {
     int port;
     char *credentials;
     char *www_folder;
+    char *certficate_path;
+    char *private_key_path;
     char nocommands;
 } config;
 

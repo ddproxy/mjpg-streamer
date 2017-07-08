@@ -1014,22 +1014,24 @@ void server_cleanup(void *arg)
 
     OPRINT("cleaning up ressources allocated by server thread #%02d\n", pcontext->id);
     
+    ssl_context_cleanup(pcontext->ssl_ctx);
+    
     for(i = 0; i < MAX_SD_LEN; i++)
         close(pcontext->sd[i]);
     
-    ssl_context_cleanup(pcontext->ssl_ctx);
+    
 }
 
 /******************************************************************************
-Description.: Open a TCP socket and wait for clients to connect. If clients
+Description.: Open a TCP socket and bind it to an SSL one, then wait for clients to connect. If clients
               connect, start a new thread for each accepted connection.
 Input Value.: arg is a pointer to the globals struct
 Return Value: always NULL, will only return on exit
 ******************************************************************************/
 void *server_thread(void *arg)
 {
-    char* cert_file = "./Certificates/server_cert.pem";
-    char* prvkey_file = "./Certificates/server_prvkey.pem";
+    char* cert_file = NULL;			//Pointers to path string for certificate and private key files.
+    char* prvkey_file = NULL;
     int on;
     pthread_t client;
     struct addrinfo *aip, *aip2;
@@ -1042,14 +1044,25 @@ void *server_thread(void *arg)
     int err;
     int i;
     /*SSL factory pointer, used for every new client connection*/
-    SSL_CTX* ssl_ctx;
+    SSL_CTX* ssl_ctx = NULL;
     
+    context *pcontext = arg;
+    pglobal = pcontext->pglobal;
+    
+    if(pcontext->conf.certficate_path == NULL || pcontext->conf.private_key_path == NULL){
+    	perror("public certificate and private key files must be specified");
+    	exit(EXIT_FAILURE);
+    }
+    cert_file = pcontext->conf.certficate_path;
+    prvkey_file = pcontext->conf.private_key_path;
     /* create the ssl factory */
     ssl_ctx = create_SSL_context(cert_file, prvkey_file);	
-
-    context *pcontext = arg;
+    if(ssl_ctx == NULL){
+    	perror("create_SSL_context(cert_file, prvkey_file) failed");
+    	exit(EXIT_FAILURE);
+    }
+    
     pcontext->ssl_ctx = ssl_ctx;
-    pglobal = pcontext->pglobal;
 
     /* set cleanup handler to cleanup ressources */
     pthread_cleanup_push(server_cleanup, pcontext);
